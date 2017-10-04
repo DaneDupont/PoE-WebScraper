@@ -1,0 +1,73 @@
+#python 3.0 webscraper
+# requires bs4.4.1 or higher, use command:pip install beautifulsoup4
+# requires urllib, numpy
+from urllib.request import urlopen
+import numpy as np
+from bs4 import BeautifulSoup
+
+#int main
+def main():
+#NOTE: Each league will require updated links to the url list, default is set to standard league. 
+
+    urlList = ['http://poe.trade/search/etehayaritohuk', #energy from within
+               'http://poe.trade/search/gomeyesunokuno', #kiara's
+               'http://poe.trade/search/imebesisasomom', #astramentis
+               'http://poe.trade/search/kohiguhesiakiw', #skyforth
+               'http://poe.trade/search/simazabuazimiy', #berek's respite
+               'http://poe.trade/search/utokomauyamoam', #disfavor
+               'http://poe.trade/search/enititaseroiot'] #headhunter
+
+    soup = BeautifulSoup('<b></b>','html.parser')
+    urlnew = ''
+    counter=0
+
+    #Main loop - feeds makesoup() with urls from array, takes soup and parses with itemsearch()
+    while counter < len(urlList):
+        urlnew = urlList[counter]
+        soup = makesoup(urlnew, soup)
+        itemsearch(soup)
+        print('Search Link: ',counter+1, urlnew, '-------')
+        print()
+        counter+=1
+
+
+    # Function: Takes in the open url and the soup, stores page as html, parses page with BeautifulSoup
+def makesoup(activeurl, newsoup):
+    html = urlopen(activeurl)
+    rhtml = html.read()
+    newsoup = BeautifulSoup(rhtml, 'html.parser')
+    return newsoup
+    
+#Function - takes in a bs4 soup, finds outlieing prices on poe.trade
+def itemsearch(soups):
+    x=1
+    ignList=[]
+    buyoutList=[]
+    currencyType=soups.tbody['data-buyout'].split(" ")[1]
+    # Finds all [tbody] tags and associated [data-*] tags, stores the first 15 results in arrays (ignList, buyoutList)
+    for data in soups.find_all('tbody'):
+        #Gets first 15 results of the first type of currency to show up
+        if (x<=15) and (currencyType == data.get('data-buyout').split(" ")[1]):
+            itemName=(data.get('data-name'))
+            ignList.append(data.get('data-ign'))
+            buyoutList.append(float(data.get('data-buyout').split(" ")[0]))
+            x+=1
+    # 2 standard deviations away from the mean on buyouts of top items
+    buyoutStdDev = np.std(buyoutList)
+    buyoutMean = np.mean(buyoutList)
+    #Make array - Compare median to std deviation, looks for 2 standard deviations
+    dist = np.abs(buyoutList - np.median(buyoutList))
+    print(itemName)
+    #prints out items to buy, edit buyoutStdDev*1 to change tolerance
+    for price_index in range(0, len(buyoutList)):
+        if(dist[price_index] > buyoutStdDev*2) & (buyoutList[price_index] < buyoutMean):
+            print('Seller: ', ignList[price_index], '- ', buyoutList[price_index], currencyType)
+            print('Mean: ', buyoutMean, '--- Standard Dev: ', buyoutStdDev)
+            print('\n')
+
+    print('Search for',itemName,'has ended...')
+    print()
+    return;
+
+if __name__ == "__main__":
+    main()
